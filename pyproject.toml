@@ -7,8 +7,14 @@ version = "0.2.1"
 description = "work:// control plane — lock-aware leases so a worker fleet clears the backlog in parallel without conflicts"
 requires-python = ">=3.10"
 dependencies = [
+  "litellm>=1.92,<2",
   "urirun",
   "urirun-work @ https://github.com/if-uri/urirun-work/archive/refs/tags/v0.2.0.tar.gz",
+]
+[project.optional-dependencies]
+test = [
+  "pytest>=8,<10",
+  "urirun-connector-grants @ git+https://github.com/urirun-connectors/urirun-connector-grants.git@main",
 ]
 [project.entry-points."urirun.bindings"]
 work = "urirun_connector_work.core:urirun_bindings"
