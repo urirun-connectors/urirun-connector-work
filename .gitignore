@@ -1,1 +1,7 @@
 .code2llm_cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.planfile/sprints/*.fast.json
+

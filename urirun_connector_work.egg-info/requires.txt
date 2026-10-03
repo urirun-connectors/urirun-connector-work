@@ -1,2 +1,0 @@
-urirun
-urirun-work @ https://github.com/if-uri/urirun-work/archive/refs/tags/v0.2.0.tar.gz
