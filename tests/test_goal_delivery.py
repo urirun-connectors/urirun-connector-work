@@ -56,3 +56,26 @@ def test_channel_ready_no_recipient_asks_for_it(monkeypatch):
     monkeypatch.setattr(goal, "signal_channel", lambda node="lenovo": {"channel": "signal-gui-kvm", "ready": True})
     d = goal.deliver_signal()  # brak recipient/treści
     assert d["reason"] == "need_recipient_and_text" and d["no_new_code_tickets_created"] is True
+
+
+def test_call_llm_with_oqllm_docker(monkeypatch):
+    """Verify unified LLM call through local OQLLM Docker instance."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11437/health", timeout=1.0) as resp:
+            if resp.status != 200:
+                return
+    except Exception:
+        return
+
+    monkeypatch.setenv("URIRUN_LLM_API_BASE", "http://127.0.0.1:11437/v1")
+    monkeypatch.setenv("URIRUN_LLM_API_KEY", "oqllm_live_loopback_root")
+
+    res = goal._llm_completion(
+        prompt="proc://dockuri/ops/container/list",
+        model="oqlos/system-one-router",
+        max_tokens=200,
+    )
+    assert res.get("ok") is True
+    assert "proc://dockuri/ops/container/list" in res.get("content", "")
+
