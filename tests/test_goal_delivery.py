@@ -79,3 +79,22 @@ def test_call_llm_with_oqllm_docker(monkeypatch):
     assert res.get("ok") is True
     assert "proc://dockuri/ops/container/list" in res.get("content", "")
 
+
+
+def test_gateway_credentials_are_opt_in(monkeypatch):
+    for var in ("URIRUN_LLM_API_BASE", "URIRUN_LLM_API_KEY", "OQLLM_API_KEY", "OPENAI_API_BASE", "OPENROUTER_BASE_URL"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-must-not-leak")
+    model, kw = goal._gateway_call("openrouter/z-ai/glm-5.3")
+    assert model == "openrouter/z-ai/glm-5.3" and kw == {}
+
+    # pre-existing transport override keeps its original semantics (no key, no renaming)
+    monkeypatch.setenv("OPENROUTER_BASE_URL", "https://proxy.example/v1")
+    model, kw = goal._gateway_call("anthropic/claude")
+    assert model == "anthropic/claude" and kw == {"api_base": "https://proxy.example/v1"}
+
+    monkeypatch.setenv("URIRUN_LLM_API_BASE", "http://127.0.0.1:11437/v1")
+    monkeypatch.setenv("OQLLM_API_KEY", "oqllm-key")
+    model, kw = goal._gateway_call("oqlos/system-one-router")
+    assert model == "openai/oqlos/system-one-router"
+    assert kw == {"api_base": "http://127.0.0.1:11437/v1", "api_key": "oqllm-key"}
