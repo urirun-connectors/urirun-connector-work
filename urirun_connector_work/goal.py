@@ -622,18 +622,7 @@ def _litellm_call_kwargs() -> dict[str, Any]:
         or os.environ.get("OPENROUTER_BASE_URL")
         or ""
     ).strip().rstrip("/")
-    api_key = (
-        os.environ.get("URIRUN_LLM_API_KEY")
-        or os.environ.get("OQLLM_API_KEY")
-        or os.environ.get("OPENAI_API_KEY")
-        or ""
-    ).strip()
-    kw: dict[str, Any] = {}
-    if api_base:
-        kw["api_base"] = api_base
-    if api_key:
-        kw["api_key"] = api_key
-    return kw
+    return {"api_base": api_base} if api_base else {}
 
 
 def _get_executor_history_path() -> Path:
@@ -791,16 +780,12 @@ Output ONLY compact JSON:
 {{"uri": "exact-uri-from-registry", "payload": {{...}}, "reason": "why this URI now", "expected_verify": "text that should appear"}}
 """
     try:
-        kw = _litellm_call_kwargs()
-        call_model = model
-        if kw.get("api_base") and not (call_model.startswith("openai/") or call_model.startswith("openrouter/")):
-            call_model = f"openai/{call_model}"
         resp = _litellm.completion(
-            model=call_model,
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=0.2,
-            **kw,
+            **_litellm_call_kwargs(),
         )
         content = (resp.choices[0].message.content or "").strip()
         if "{" in content:
@@ -903,16 +888,12 @@ def _llm_completion(model: str, prompt: str, system: str = None, max_tokens: int
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user_content})
-        kw = _litellm_call_kwargs()
-        call_model = model
-        if kw.get("api_base") and not (call_model.startswith("openai/") or call_model.startswith("openrouter/")):
-            call_model = f"openai/{call_model}"
         resp = _litellm.completion(
-            model=call_model,
+            model=model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
-            **kw,
+            **_litellm_call_kwargs(),
         )
         content = (resp.choices[0].message.content or "").strip()
         _save_llm_trace(ticket, "llm-call", model, prompt if not images else prompt + " [with images]", content, images=images)
