@@ -622,18 +622,26 @@ def _litellm_call_kwargs() -> dict[str, Any]:
         or os.environ.get("OPENROUTER_BASE_URL")
         or ""
     ).strip().rstrip("/")
-    api_key = (
-        os.environ.get("URIRUN_LLM_API_KEY")
-        or os.environ.get("OQLLM_API_KEY")
-        or os.environ.get("OPENAI_API_KEY")
-        or ""
-    ).strip()
-    kw: dict[str, Any] = {}
-    if api_base:
-        kw["api_base"] = api_base
-    if api_key:
-        kw["api_key"] = api_key
-    return kw
+    return {"api_base": api_base} if api_base else {}
+
+
+def _explicit_gateway() -> tuple[str, str]:
+    """Opt-in OpenAI-compatible gateway (e.g. OQLLM). Only an explicit URIRUN_LLM_API_BASE
+    switches model naming and credentials; provider keys are never re-sent to it."""
+    base = (os.environ.get("URIRUN_LLM_API_BASE") or "").strip()
+    key = (os.environ.get("URIRUN_LLM_API_KEY") or os.environ.get("OQLLM_API_KEY") or "").strip()
+    return base, key
+
+
+def _gateway_call(model: str) -> tuple[str, dict[str, Any]]:
+    kw = _litellm_call_kwargs()
+    base, key = _explicit_gateway()
+    if base:
+        if key:
+            kw["api_key"] = key
+        if not model.startswith(("openai/", "openrouter/")):
+            model = f"openai/{model}"
+    return model, kw
 
 
 def _get_executor_history_path() -> Path:
@@ -791,10 +799,7 @@ Output ONLY compact JSON:
 {{"uri": "exact-uri-from-registry", "payload": {{...}}, "reason": "why this URI now", "expected_verify": "text that should appear"}}
 """
     try:
-        kw = _litellm_call_kwargs()
-        call_model = model
-        if kw.get("api_base") and not (call_model.startswith("openai/") or call_model.startswith("openrouter/")):
-            call_model = f"openai/{call_model}"
+        call_model, kw = _gateway_call(model)
         resp = _litellm.completion(
             model=call_model,
             messages=[{"role": "user", "content": prompt}],
@@ -903,10 +908,7 @@ def _llm_completion(model: str, prompt: str, system: str = None, max_tokens: int
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user_content})
-        kw = _litellm_call_kwargs()
-        call_model = model
-        if kw.get("api_base") and not (call_model.startswith("openai/") or call_model.startswith("openrouter/")):
-            call_model = f"openai/{call_model}"
+        call_model, kw = _gateway_call(model)
         resp = _litellm.completion(
             model=call_model,
             messages=messages,
